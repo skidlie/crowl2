@@ -1,5 +1,5 @@
 // --- Configuration ---
-const APPS_SCRIPT_URL = 'PASTE_YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyP8pUo11_0qM5g2lbM4Pi5AuMwvfgZqrOnLLEBLCFgUrmzlkKLE8Ds3MPWfczplaU/exec';
 const CHIU_PEER_ID = 'chiu-video-call-peer-a9b8c7d6e5f4';
 
 // --- Get HTML Elements ---
@@ -47,27 +47,33 @@ function initializePeer() {
         peer = new Peer(CHIU_PEER_ID);
         statusMessage.textContent = "Ready to start a call.";
         startCallBtn.classList.remove('hidden');
+        // Chiu waits passively for a call
         peer.on('call', call => {
             stopCountdown();
             call.answer(localStream);
             handleIncomingCall(call);
         });
     } else if (user === 'admin') {
-        peer = new Peer();
-        statusMessage.textContent = "Waiting for your friend to start a call...";
+        peer = new Peer(); // Admin gets a random ID
+        statusMessage.textContent = "Ready to join the call when Chiu starts.";
         joinCallBtn.classList.remove('hidden');
     }
     
     peer.on('error', (err) => {
         console.error("PeerJS error:", err);
-        alert("Could not connect. Please refresh and try again.");
+        alert(`A connection error occurred: ${err.type}. Please refresh the page.`);
     });
 }
 
 // --- Call Handling ---
 function handleIncomingCall(call) {
+    // Clean up any previous call objects
+    if (currentCall) {
+        currentCall.close();
+    }
     currentCall = call;
-    // Hide initial controls and show the end call button
+    
+    // UI changes for an active call
     initialControls.classList.add('hidden');
     callInProgressControls.classList.remove('hidden');
 
@@ -76,7 +82,13 @@ function handleIncomingCall(call) {
     });
 
     call.on('close', () => {
-        alert("The other user has ended the call.");
+        alert("The call has ended.");
+        resetToInitialState();
+    });
+
+    call.on('error', (err) => {
+        console.error("Call error:", err);
+        alert("An error occurred during the call. Please refresh.");
         resetToInitialState();
     });
 }
@@ -86,15 +98,63 @@ startCallBtn.addEventListener('click', () => {
     fetch(APPS_SCRIPT_URL + '?type=startcall')
         .catch(err => console.error("Error notifying admin:", err));
     
-    statusMessage.textContent = "Notified admin. Waiting for them to join...";
+    statusMessage.textContent = "Waiting for admin to join...";
     startCallBtn.classList.add('hidden');
     startCountdown();
 });
 
+// --- NEW (IMPROVED) ADMIN JOIN LOGIC ---
 joinCallBtn.addEventListener('click', () => {
-    const call = peer.call(CHIU_PEER_ID, localStream);
-    handleIncomingCall(call);
+    statusMessage.textContent = "Searching for Chiu... Please wait.";
+    joinCallBtn.classList.add('hidden');
+
+    // Clear any old retry timers or counts
+    if (window.retryTimeout) clearTimeout(window.retryTimeout);
+    delete window.retryCount;
+
+    const attemptCall = () => {
+        // Stop if a call is already connected
+        if (currentCall && currentCall.open) return;
+
+        console.log("Attempting to call Chiu...");
+        const call = peer.call(CHIU_PEER_ID, localStream);
+
+        // This event fires when the connection is successful
+        call.on('stream', () => {
+            console.log("Call connected successfully!");
+            if (window.retryTimeout) clearTimeout(window.retryTimeout);
+            delete window.retryCount;
+        });
+
+        // This event fires if the peer is not available
+        call.on('error', (err) => {
+            console.warn(`Call failed: ${err.type}. Retrying in 5 seconds.`);
+            statusMessage.textContent = "Friend is not online yet... Retrying.";
+            
+            if (!window.retryCount) window.retryCount = 0;
+            window.retryCount++;
+            
+            // Try for 1 minute (12 attempts * 5 seconds)
+            if (window.retryCount > 12) {
+                statusMessage.textContent = "Could not connect. Ask Chiu to start the call, then click Join again.";
+                joinCallBtn.classList.remove('hidden');
+                clearTimeout(window.retryTimeout);
+                delete window.retryCount;
+                return;
+            }
+
+            // Schedule the next retry
+            window.retryTimeout = setTimeout(attemptCall, 5000);
+        });
+
+        // Handle the call object immediately
+        handleIncomingCall(call);
+    };
+
+    // Start the first attempt
+    attemptCall();
 });
+
 
 endCallBtn.addEventListener('click', () => {
     if (currentCall) currentCall.close();
@@ -130,6 +190,9 @@ function stopCountdown() {
 }
 
 function resetToInitialState() {
+    if (window.retryTimeout) clearTimeout(window.retryTimeout);
+    delete window.retryCount;
+
     if (currentCall) currentCall.close();
     if (peer) peer.destroy();
     sessionStorage.removeItem('user');
