@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Call Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container" id="login-container">
+        <h1>Video Call</h1>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button id="login-btn">Login</button>
+        <p id="error-message"></p>
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyP8pUo11_0qM5g2lbM4Pi5AuMwvfgZqrOnLLEBLCFgUrmzlkKLE8Ds3MPWfczplaU/exec';
+
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const errorMessage = document.getElementById('error-message');
+            
+            const isChiu = username === 'chiu' && password === '0110';
+            const isAdmin = username === 'admin' && password === '0110';
+
+            if (isChiu) {
+                // If it's 'chiu', send the login notification first
+                errorMessage.textContent = 'Logging in ...';
+                try {
+                    // We add '?type=login' to the URL
+                    await fetch(APPS_SCRIPT_URL + '?type=login');
+                } catch (error) {
+                    console.error('Failed to send login notification:', error);
+                }
+                
+                // Now proceed to the call page
+                sessionStorage.setItem('user', username);
+                window.location.href = 'call.html';
+
+            } else if (isAdmin) {
+                // Admin logs in without sending a notification
+                sessionStorage.setItem('user', username);
+                window.location.href = 'call.html';
+            } else {
+                errorMessage.textContent = 'Invalid username or password.';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden; /* Prevents scrollbars */
+    font-family: Arial, sans-serif;
+    background-color: #2c2c2c;
+}
+
+#call-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background-color: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.video-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* --- VIDEO STYLES (THE CORE CHANGE) --- */
+
+/* Remote video (the big one) */
+#remote-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Fills the screen without stretching */
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* Local video (the small picture-in-picture) */
+#local-video {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 25%; /* Responsive width */
+    max-width: 200px; /* Maximum size on large screens */
+    min-width: 100px; /* Minimum size on small screens */
+    height: auto;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+    transform: scaleX(-1); /* Mirror effect for self-view */
+}
+
+/* --- CONTROLS AND TEXT STYLES --- */
+
+/* Container for text/buttons before the call starts */
+#initial-controls {
+    color: white;
+    text-align: center;
+    z-index: 20; /* Make sure it appears above the black background */
+}
+
+#initial-controls h1, #initial-controls p {
+    background-color: rgba(0,0,0,0.5);
+    padding: 5px 15px;
+    border-radius: 10px;
+}
+
+/* Container for the End Call button during a call */
+#call-in-progress-controls {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+}
+
+button {
+    padding: 15px 30px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 18px;
+    margin: 5px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+#end-call-btn {
+    background-color: #e62e4d;
+}
+#end-call-btn:hover {
+    background-color: #c82333;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Login page specific styles */
+#login-container {
+    background-color: #3e3e3e;
+    padding: 40px;
+    border-radius: 10px;
+    color: white;
+    text-align: center;
+}
+input {
+    width: calc(100% - 20px);
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #555;
+    border-radius: 5px;
+    background-color: #505050;
+    color: white;
+}
+#error-message {
+    color: #ff6b6b;
+    margin-top: 15px;
+}
