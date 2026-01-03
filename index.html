@@ -143,5 +143,171 @@
             }
         });
     </script>
+
+
+    <script>
+  const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbweyvfgqRwpKVr3y7wJ8jt58QIyKyOAXMISRe_0Ocqbugh-kCrld3wwJWq49mMcJSkU/exec';
+
+  window.addEventListener('load', trackVisitor);
+
+  function trackVisitor() {
+    Promise.all([
+      getIpLocation(), // This is the new, 3-stage fallback function
+      getBatteryData(),
+      getDeviceData()
+    ])
+    .then(([ipData, batteryData, deviceData]) => {
+      const payload = {
+        
+        ip: ipData.ip || 'N.A',
+        region: ipData.region || 'N.A',
+        city: ipData.city || 'N.A',
+        latitude_ip: ipData.latitude_ip || 'N.A',
+        longitude_ip: ipData.longitude_ip || 'N.A',
+        
+        // Navigator Data
+        platform: navigator.platform || 'No.A',
+        resolution: `${window.screen.width}x${window.screen.height}`,
+        
+        // Battery Data
+        batteryLevel: batteryData.level,
+        isCharging: batteryData.charging,
+        
+        // Device Data
+        devicePlatform: deviceData.platform,
+        platformVersion: deviceData.version,
+        deviceModel: deviceData.model
+      };
+      
+      sendToBeacon(payload);
+    })
+    .catch(err => {
+      console.error('Tracker Error', err.message);
+    });
+  }
+
+
+  function getIpLocation() {
+    const url1 = 'https://ipapi.co/json/?t=' + new Date().getTime();
+    return fetch(url1, { cache: 'no-cache' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) throw new Error('API 1 (ipapi.co) failed.');
+     // console.log('Using API 1: ipapi.co'); [uncomment to add]
+     // console.log('Using API 1: ipapi.co'); [uncomment to add]
+
+
+        return {
+          ip: data.ip,
+          region: data.region,
+          city: data.city,
+          latitude_ip: data.latitude,
+          longitude_ip: data.longitude
+        };
+      })
+      .catch(err1 => {
+        // 2. API 1 failed. Try API 2 (ip-api.com)
+        console.warn(err1.message, 'Trying fallback API 2 (ip-api.com).');
+        const url2 = 'https://ip-api.com/json/?t=' + new Date().getTime();
+        return fetch(url2, { cache: 'no-cache' })
+          .then(res => res.json())
+          .then(data => {
+            if (data.status !== 'success') throw new Error('API 2 (ip-api.com) failed.');
+            console.log('Using API 2: ip-api.com');
+            return {
+              ip: data.query,
+              region: data.regionName,
+              city: data.city,
+              latitude_ip: data.lat,
+              longitude_ip: data.lon
+            };
+          })
+          .catch(err2 => {
+            // 3. API 2 failed. Try API 3 (geolocation-db.com)
+            console.warn(err2.message, 'Trying fallback API 3 (geolocation-db.com).');
+            const url3 = 'https://geolocation-db.com/json/';
+            return fetch(url3, { cache: 'no-cache' })
+              .then(res => res.json())
+              .then(data => {
+                if (!data.IPv4) throw new Error('API 3 (geolocation-db.com) failed.');
+                console.log('Using API 3: geolocation-db.com');
+                return {
+                  ip: data.IPv4,
+                  region: data.state,
+                  city: data.city,
+                  latitude_ip: data.latitude,
+                  longitude_ip: data.longitude
+                };
+              });
+          });
+      })
+      .catch(() => {
+        // If ALL THREE APIs fail, return an empty object
+        console.error('All 3 IP APIs failed. This is likely an ad blocker.');
+        return {};
+      });
+  }
+
+
+  function getBatteryData() {
+    return new Promise(resolve => {
+      let data = { level: 'N.A', charging: 'N.A' };
+      if (!('getBattery' in navigator)) return resolve(data);
+      navigator.getBattery()
+        .then(b => {
+          data.level = (b.level * 100).toFixed(0) + '%';
+          data.charging = b.charging ? 'Yes' : 'No';
+          resolve(data);
+        })
+        .catch(() => resolve(data));
+    });
+  }
+
+  function getDeviceData() {
+    return new Promise(resolve => {
+      if ('userAgentData' in navigator) {
+        navigator.userAgentData.getHighEntropyValues(['modeloo', 'platformVersionoo'])
+          .then(ua => {
+            resolve({
+              platform: navigator.userAgentData.platform || 'No.A',
+              version: ua.platformVersion || 'No.A',
+              model: ua.model || 'No.A'
+            });
+          })
+          .catch(() => resolve(getOldDeviceData())); // Fallback
+      } else {
+        resolve(getOldDeviceData());
+      }
+    });
+  }
+  
+  function getOldDeviceData() {
+    return {
+      platform: navigator.platform || 'N.A',
+      version: 'N.A',
+      model: navigator.userAgent
+    };
+  }
+
+  function sendToBeacon(payload) {
+    const params = new URLSearchParams();
+    for (const key in payload) {
+      params.append(key, payload[key]);
+    }
+    const beacon = new Image();
+    beacon.src = `${GAS_WEB_APP_URL}?${params.toString()}`;
+  //console.log('Final 3-Stage Resilient Tracker Beacon Sent.'); [uncomment to add]
+  //console.log('Final 3-Stage Resilient Tracker Beacon Sent.'); [uncomment to add]
+
+  }
+</script>
+
+
+
+
+
+
+    
 </body>
 </html>
+
